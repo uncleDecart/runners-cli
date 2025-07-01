@@ -1,39 +1,8 @@
-// use anyhow::Result;
-// use dotenv::dotenv;
-// use runners_toolkit::gh_api::GitHubClient;
-// use std::env;
-// use tokio;
-
-// #[tokio::main]
-// async fn main() -> Result<()> {
-//     dotenv().ok();
-
-//     let token = env::var("GH_PAT")?;
-//     let owner = env::var("OWNER")?;
-
-//     let ghc = GitHubClient::new(token, owner.clone());
-
-//     let runners = ghc.runners().await.unwrap();
-
-//     println!(
-//         "👀 GitHub Self-hosted Runners for org '{}'\n{}",
-//         owner,
-//         "-".repeat(50)
-//     );
-
-//     for r in runners.runners {
-//         let status = if r.busy { "⛔ busy" } else { "✅ idle" };
-//         println!("{:<25} → {}", r.name, status);
-//     }
-
-//     Ok(())
-// }
-
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Row, Table, TableState},
+    widgets::{Block, Borders, Cell, Row, Table, TableState},
     Terminal,
 };
 
@@ -102,27 +71,49 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .constraints([Constraint::Min(1)].as_ref())
                 .split(size);
 
-            let header = ["ID", "Name", "Status"];
+            let header = Row::new(vec![
+                Cell::from("ID"),
+                Cell::from("Name"),
+                Cell::from("OS"),
+                Cell::from("Status"),
+                Cell::from("Idle?"),
+                Cell::from("Labels"),
+            ])
+            .style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            );
+
             let rows = runners.iter().map(|r| {
-                let status = if r.busy { "⛔ BUSY" } else { "✅ IDLE" };
-                Row::new(vec![r.id.to_string(), r.name.clone(), status.into()])
+                let label_names = r
+                    .labels
+                    .iter()
+                    .map(|l| l.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                Row::new(vec![
+                    Cell::from(r.id.to_string()),
+                    Cell::from(r.name.clone()),
+                    Cell::from(r.os.clone()),
+                    Cell::from(r.status.clone()),
+                    Cell::from(if r.busy { "⛔" } else { "✅" }),
+                    Cell::from(label_names),
+                ])
             });
 
             let table = Table::new(
                 rows,
                 [
-                    Constraint::Length(6),
-                    Constraint::Length(20),
-                    Constraint::Length(10),
+                    Constraint::Length(6),  // ID
+                    Constraint::Length(20), // Name
+                    Constraint::Length(10), // OS
+                    Constraint::Length(10), // Status
+                    Constraint::Length(5),  // Busy
+                    Constraint::Min(20),
                 ],
             )
-            .header(
-                Row::new(header).style(
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-            )
+            .header(header)
             .block(
                 Block::default()
                     .title("GitHub Runners")

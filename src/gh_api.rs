@@ -12,7 +12,16 @@ pub struct RunnerList {
 pub struct Runner {
     pub id: u64,
     pub name: String,
+    pub os: String,
+    pub status: String,
     pub busy: bool,
+    pub labels: Vec<Label>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Label {
+    pub id: u64,
+    pub name: String,
 }
 
 pub struct GitHubClient {
