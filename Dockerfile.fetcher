@@ -1,0 +1,41 @@
+# Build stage
+FROM rust:1.85.0 as builder
+
+WORKDIR /usr/src/app
+COPY . .
+
+# Install build dependencies for ClickHouse client
+RUN apt-get update && apt-get install -y \
+    cmake \
+    protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build only the fetcher binary
+RUN cargo build --bin runners-fetcher --release
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y libssl3 ca-certificates && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install runtime dependencies for ClickHouse client
+RUN apt-get update && apt-get install -y \
+    openssl \
+    libssl-dev \
+    libssl3 \
+    libpq-dev \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install terminfo to fix terminal warnings
+RUN mkdir -p /usr/share/terminfo/x \
+    && ln -s /usr/share/terminfo/x/xterm-256color /usr/share/terminfo/x/xterm \
+    && ln -s /usr/share/terminfo/x/xterm-256color /usr/share/terminfo/x/xterm-color
+
+COPY --from=builder /usr/src/app/target/release/runners-fetcher /usr/local/bin/fetcher
+
+COPY .env .
+
+CMD ["fetcher"]
