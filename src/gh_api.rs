@@ -10,7 +10,7 @@ pub struct RunnerList {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Runner {
-    pub id: u64,
+    pub id: i64,
     pub name: String,
     pub os: String,
     pub status: String,
@@ -58,7 +58,7 @@ impl GitHubClient {
         Self { base, client }
     }
 
-    pub async fn runners(&self) -> Result<RunnerList, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn runners(&self) -> Result<RunnerList> {
         let url = format!("https://api.github.com/{}/actions/runners", &self.base);
 
         let res = self.client.get(url).send().await?.error_for_status()?;
